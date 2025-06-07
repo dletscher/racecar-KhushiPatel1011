@@ -16,7 +16,7 @@ class Agent:
         # Weighted sum
         a = 0.6 # for side diff
         b = 0.4 # for near diff
-        error = 0.6 * side_diff + 0.4 * near_diff
+        error = a * side_diff + b * near_diff
 
         # Small Threshold
         c = 0.1

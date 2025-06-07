@@ -5,46 +5,51 @@ class Agent:
     def chooseAction(self, observations, possibleActions):
         lidar = observations['lidar']
         velocity = observations['velocity']
-       
-        lidar = [d if d != float('inf') else 100.0 for d in lidar]
+
+        # Replacing infinity distance factor with a large static number that is 100 for easier calculations
+        lidar = [d if d != float('inf') else 100.0 for d in lidar] 
         far_left, left, center, right, far_right = lidar
 
-        # Steering Logic
         side_diff = (far_left + left) - (far_right + right)
         near_diff = left - right
-       
-        # Weighted sum
-        a = 0.6 # for side diff
-        b = 0.4 # for near diff
+
+        # Weight Errors for side diff and near diff
+        a = 0.7
+        b = 0.3
         error = a * side_diff + b * near_diff
 
-        # Small Threshold
-        c = 0.1
-
-        if error > c:
+        # Controls for deciding which action to take
+        if error > 0.05:
             direction = 'left'
-        elif error < -c:
+        elif error < -0.05:
             direction = 'right'
         else:
             direction = 'straight'
-           
+
+        # Speeding Logic with breakdows of path
         min_front = min(left, center, right)
         min_side = min(far_left, far_right)
         curvature = (left + right) - (far_left + far_right)
+        
+        safe_velocity = 0.12
 
-        # Apply brake only if car is very close to crashing into side lanes
-        if center < 0.06 or min_front < 0.05:
+        # Condition for braking 
+        if center < 0.12 or min_front < 0.12 or min_side < 0.12:
             speed_action = 'brake'
 
-        # If the curve is sharp and the car is fast => only coast
-        elif (min_front < 0.2 or abs(error) > 1.8) and velocity > 0.12:
+        # Sharp Turn within safe velocity => coast
+        elif (min_front < 0.25 or abs(error) > 2.2) and velocity > 0.08:
             speed_action = 'coast'
 
-        # If the car is slow => accelerate
-        elif velocity < 0.2:
+        # If car is very slow than the safe velocity => accelerate
+        elif velocity < 0.05 and center > 0.2 and min_side > 0.2:
             speed_action = 'accelerate'
 
-        # Always accelerate when there is clear straight track
+        # If car is moving above the safe velocity => coast
+        elif velocity >= safe_velocity:
+            speed_action = 'coast'
+
+        # Condition other than that, agent always needs to accelerate
         else:
             speed_action = 'accelerate'
 

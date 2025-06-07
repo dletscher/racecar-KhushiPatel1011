@@ -3,19 +3,22 @@ import random
 class Agent:
 
     def chooseAction(self, observations, possibleActions):
-        far_left, near_left, center, near_right, far_right = observations['lidar']
-        vel = observations['velocity']
+        lidar = observations['lidar']
+        velocity = observations['velocity']
+       
+        lidar = [d if d != float('inf') else 100.0 for d in lidar]
+        far_left, left, center, right, far_right = lidar
 
-        # STEERING LOGIC
-        error_combined = (far_left + near_left) - (far_right + near_right)
-        error_near = near_left - near_right
+        # Steering Logic
+        side_diff = (far_left + left) - (far_right + right)
+        near_diff = left - right
+       
+        # Weighted sum
+        a = 0.6 # for side diff
+        b = 0.4 # for near diff
+        error = 0.6 * side_diff + 0.4 * near_diff
 
-        # Weighted sum: a for combined, b for near
-        a = 0.3
-        b = 0.7
-        error = a * error_combined + b * error_near
-
-        # Dead‐zone Threshold (Smaller Threshold)
+        # Small Threshold
         c = 0.1
 
         if error > c:
@@ -24,29 +27,25 @@ class Agent:
             direction = 'right'
         else:
             direction = 'straight'
+           
+        min_front = min(left, center, right)
+        min_side = min(far_left, far_right)
+        curvature = (left + right) - (far_left + far_right)
 
-        # SPEED LOGIC
-        if vel < 0.2:
-            # Starting Acceleration
-            action_speed = 'accelerate'
+        # Apply brake only if car is very close to crashing into side lanes
+        if center < 0.06 or min_front < 0.05:
+            speed_action = 'brake'
+
+        # If the curve is sharp and the car is fast => only coast
+        elif (min_front < 0.2 or abs(error) > 1.8) and velocity > 0.12:
+            speed_action = 'coast'
+
+        # If the car is slow => accelerate
+        elif velocity < 0.2:
+            speed_action = 'accelerate'
+
+        # Always accelerate when there is clear straight track
         else:
-            # Dynamic Brake Thresholds
-            base_brake = 4.0
-            vel_factor = 8.0
-            brake_threshold = base_brake + vel * vel_factor
-            side_threshold = brake_threshold / 2.0
+            speed_action = 'accelerate'
 
-            # BRACKING AND ACCELERATING LOGIC
-            if center < brake_threshold or near_left < side_threshold or near_right < side_threshold:
-                action_speed = 'brake'
-            else:
-                if vel < 1.0:
-                    action_speed = 'accelerate'
-                else:
-                    action_speed = 'coast'
-
-        return (direction, action_speed)
-
-    def load(self, data=None):
-        pass
-
+        return (direction, speed_action)

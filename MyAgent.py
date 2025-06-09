@@ -26,12 +26,12 @@ class Agent:
         else:
             direction = 'straight'
 
-        # Speeding Logic with breakdows of path
+        # Speeding Logic with breakdowns of path
         min_front = min(left, center, right)
         min_side = min(far_left, far_right)
         curvature = (left + right) - (far_left + far_right)
         
-        safe_velocity = 0.12
+        safe_velocity = 0.14
 
         # Condition for braking 
         if center < 0.12 or min_front < 0.12 or min_side < 0.12:

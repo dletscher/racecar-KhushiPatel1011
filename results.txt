@@ -1,0 +1,8 @@
+Oval	Not simulated
+Spiral	Not simulated
+Small_Circle	Not simulated
+Large_Circle	Not simulated
+Fast	Not simulated
+
+Score	0
+grade	32.5

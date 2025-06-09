@@ -3,54 +3,53 @@ import random
 class Agent:
 
     def chooseAction(self, observations, possibleActions):
-        lidar = observations['lidar']
-        velocity = observations['velocity']
+        far_left, left, center, right, far_right = observations['lidar']
+        vel = observations['velocity']
 
-        # Replacing infinity distance factor with a large static number that is 100 for easier calculations
-        lidar = [d if d != float('inf') else 100.0 for d in lidar] 
-        far_left, left, center, right, far_right = lidar
+        # Steering Logic
+        error_combined = (far_left + left) - (far_right + right)
+        error_near = left - right
 
-        side_diff = (far_left + left) - (far_right + right)
-        near_diff = left - right
+        a = 0.8
+        b = 0.15
+        error = a * error_combined + b * error_near
 
-        # Weight Errors for side diff and near diff
-        a = 0.7
-        b = 0.3
-        error = a * side_diff + b * near_diff
-
-        # Controls for deciding which action to take
-        if error > 0.05:
+        c = 0.05
+        if error > c:
             direction = 'left'
-        elif error < -0.05:
+        elif error < -c:
             direction = 'right'
         else:
             direction = 'straight'
 
-        # Speeding Logic with breakdowns of path
-        min_front = min(left, center, right)
-        min_side = min(far_left, far_right)
-        curvature = (left + right) - (far_left + far_right)
-        
-        safe_velocity = 0.14
+        # For Track 8
+        spiral_turn = (center < 0.3 and left < 0.4 and right < 0.4) or (center < 0.25)
+        distance = min(center, left, right) < 0.15
 
-        # Condition for braking 
-        if center < 0.12 or min_front < 0.12 or min_side < 0.12:
-            speed_action = 'brake'
-
-        # Sharp Turn within safe velocity => coast
-        elif (min_front < 0.25 or abs(error) > 2.2) and velocity > 0.08:
-            speed_action = 'coast'
-
-        # If car is very slow than the safe velocity => accelerate
-        elif velocity < 0.05 and center > 0.2 and min_side > 0.2:
-            speed_action = 'accelerate'
-
-        # If car is moving above the safe velocity => coast
-        elif velocity >= safe_velocity:
-            speed_action = 'coast'
-
-        # Condition other than that, agent always needs to accelerate
+        # Speeding Logic
+        if vel < 0.15:
+            action_speed = 'accelerate'
+        elif distance:
+            action_speed = 'brake'
+        elif spiral_turn:
+            if vel > 0.17:
+                action_speed = 'brake'
+            else:
+                action_speed = 'coast'
         else:
-            speed_action = 'accelerate'
+            base_brake = 3.0
+            vel_factor = 7.5
+            brake_threshold = base_brake + vel * vel_factor
+            side_threshold = brake_threshold / 2.2
 
-        return (direction, speed_action)
+            if center < brake_threshold or left < side_threshold or right < side_threshold:
+                action_speed = 'brake'
+            elif vel < 1.0:
+                action_speed = 'accelerate'
+            else:
+                action_speed = 'coast'
+
+        return (direction, action_speed)
+
+    def load(self, data=None):
+        pass
